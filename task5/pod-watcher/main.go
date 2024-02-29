@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -46,6 +47,18 @@ func init() {
 	//+kubebuilder:scaffold:scheme
 }
 
+func getWatchNamespace() (string, error) {
+	// returns the Namespace the operator should be watching for changes
+	// taken from https://sdk.operatorframework.io/docs/building-operators/golang/operator-scope/#configuring-watch-namespaces-dynamically
+	var watchNamespaceEnvVar = "WATCH_NAMESPACE"
+
+	ns, found := os.LookupEnv(watchNamespaceEnvVar)
+	if !found {
+		return "", fmt.Errorf("%s environment variable not set", watchNamespaceEnvVar)
+	}
+	return ns, nil
+}
+
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
@@ -63,8 +76,14 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	watchNamespace, err := getWatchNamespace()
+	if err != nil {
+		setupLog.Error(err, "Unable to get WatchNamespace")
+		os.Exit(1)
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Namespace:              "podwatcher-namespace", // TODO: control this via an envvar
+		Namespace:              watchNamespace,
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
 		Port:                   9443,
