@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -50,14 +51,7 @@ type PodReconciler struct {
 func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
-	// NamespacedName implements MarshalLog so it might be represented as JSON
-	// if the provided logger allows it.
-	logger.Info("New pod started", "pod", req.NamespacedName)
-
-	// TODO: If that ^ still gets stringified as namespace/podname, use the
-	// logr.Marshaler interface to hide NamespacedName's String() method:
-	// var pod logr.Marshaler = req.NamespacedName
-	// logger.Info("New pod started", "pod", pod)
+	logger.Info(fmt.Sprintf("New pod started %s", req.NamespacedName))
 
 	return ctrl.Result{}, nil
 }
