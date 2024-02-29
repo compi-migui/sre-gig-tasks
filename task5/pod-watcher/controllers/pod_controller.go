@@ -19,10 +19,13 @@ package controllers
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 // PodReconciler reconciles a Pod object
@@ -45,9 +48,16 @@ type PodReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
 func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
-	// TODO(user): your logic here
+	// NamespacedName implements MarshalLog so it might be represented as JSON
+	// if the provided logger allows it.
+	logger.Info("New pod started", "pod", req.NamespacedName)
+
+	// TODO: If that ^ still gets stringified as namespace/podname, use the
+	// logr.Marshaler interface to hide NamespacedName's String() method:
+	// var pod logr.Marshaler = req.NamespacedName
+	// logger.Info("New pod started", "pod", pod)
 
 	return ctrl.Result{}, nil
 }
@@ -55,7 +65,12 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 // SetupWithManager sets up the controller with the Manager.
 func (r *PodReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		// Uncomment the following line adding a pointer to an instance of the controlled resource as an argument
-		// For().
+		For(&corev1.Pod{}).
+		WithEventFilter(predicate.Funcs{
+			CreateFunc:  func(CreateEvent event.CreateEvent) bool { return true }, // Redundant and explicit
+			DeleteFunc:  func(deleteEvent event.DeleteEvent) bool { return false },
+			UpdateFunc:  func(updateEvent event.UpdateEvent) bool { return false },
+			GenericFunc: func(genericEvent event.GenericEvent) bool { return false },
+		}).
 		Complete(r)
 }
